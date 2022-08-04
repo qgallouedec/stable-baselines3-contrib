@@ -33,7 +33,7 @@ def objective(trial: optuna.Trial) -> float:
         model.learn(NUM_TIMESTEPS)
         buffer = model.replay_buffer
         observations = buffer.next_observations[: buffer.pos if not buffer.full else buffer.buffer_size]
-        coverage[run_idx] = cumulative_object_coverage(observations) / (24 * 24) * 100
+        coverage[run_idx] = cumulative_object_coverage(observations)
 
     score = np.median(coverage[:, -1])
     return score
