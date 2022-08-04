@@ -7,7 +7,7 @@ from toolbox.panda_utils import cumulative_object_coverage
 from sb3_contrib import DIAYN
 
 NUM_TIMESTEPS = 300_000
-NUM_RUN = 5
+NUM_RUN = 3
 
 
 def objective(trial: optuna.Trial) -> float:
