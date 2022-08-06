@@ -18,7 +18,7 @@ for run_idx in range(NUM_RUN):
         nb_models=200,
         power=-1.0,
         num_presampled_goals=64,
-        action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(2), np.ones(1)),
+        action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(env.action_space.shape[0]), np.ones(env.action_space.shape[0])),
         verbose=1,
     )
     model.learn(NUM_TIMESTEPS)

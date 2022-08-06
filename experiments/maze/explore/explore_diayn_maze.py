@@ -13,7 +13,12 @@ NUM_RUN = 5
 
 for run_idx in range(NUM_RUN):
     env = gym.make("ContinuousMaze-v0")
-    model = DIAYN(env, nb_skills=32, action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(2), np.ones(1)), verbose=1)
+    model = DIAYN(
+        env,
+        nb_skills=32,
+        action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(env.action_space.shape[0]), np.ones(env.action_space.shape[0])),
+        verbose=1,
+    )
     model.learn(NUM_TIMESTEPS)
     buffer = model.replay_buffer
     observations = buffer.next_observations["observation"][: buffer.pos if not buffer.full else buffer.buffer_size]

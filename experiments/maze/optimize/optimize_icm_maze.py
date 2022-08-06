@@ -30,7 +30,11 @@ def objective(trial: optuna.Trial) -> float:
             action_dim=env.action_space.shape[0],
         )
         model = DDPG(
-            "MlpPolicy", env, surgeon=icm, action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(2), np.ones(1)), verbose=1
+            "MlpPolicy",
+            env,
+            surgeon=icm,
+            action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(env.action_space.shape[0]), np.ones(env.action_space.shape[0])),
+            verbose=1,
         )
         model.learn(NUM_TIMESTEPS)
         buffer = model.replay_buffer

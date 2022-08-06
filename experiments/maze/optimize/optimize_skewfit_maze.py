@@ -24,7 +24,7 @@ def objective(trial: optuna.Trial) -> float:
             nb_models,
             power,
             num_presampled_goals,
-            action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(2), np.ones(1)),
+            action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(env.action_space.shape[0]), np.ones(env.action_space.shape[0])),
             verbose=1,
         )
         model.learn(NUM_TIMESTEPS)
