@@ -7,7 +7,7 @@ from stable_baselines3 import SAC
 from toolbox.panda_utils import cumulative_object_coverage
 
 NUM_TIMESTEPS = 1_000_000
-NUM_RUN = 5
+NUM_RUN = 1
 
 for run_idx in range(NUM_RUN):
     env = gym.make("PandaNoTask-v0", nb_objects=1)
