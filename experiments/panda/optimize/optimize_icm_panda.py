@@ -1,7 +1,7 @@
 import gym
-import panda_gym
 import numpy as np
 import optuna
+import panda_gym
 from stable_baselines3 import SAC
 from toolbox.panda_utils import cumulative_object_coverage
 
