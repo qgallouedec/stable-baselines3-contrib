@@ -1,8 +1,8 @@
 import os
 
 import gym
-import panda_gym
 import numpy as np
+import panda_gym
 from stable_baselines3 import SAC
 from toolbox.panda_utils import cumulative_object_coverage
 
@@ -14,10 +14,10 @@ NUM_RUN = 5
 for run_idx in range(NUM_RUN):
     env = gym.make("PandaNoTask-v0", nb_objects=1)
     icm = ICM(
-        scaling_factor=0.1,
-        actor_loss_coef=100,
-        inverse_loss_coef=10,
-        forward_loss_coef=10,
+        scaling_factor=0.01,
+        actor_loss_coef=0.001,
+        inverse_loss_coef=0.001,
+        forward_loss_coef=100,
         obs_dim=env.observation_space.shape[0],
         action_dim=env.action_space.shape[0],
     )

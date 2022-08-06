@@ -1,8 +1,8 @@
 import os
 
 import gym
-import panda_gym
 import numpy as np
+import panda_gym
 from stable_baselines3 import SAC
 from toolbox.panda_utils import cumulative_object_coverage
 
@@ -17,9 +17,9 @@ for run_idx in range(NUM_RUN):
         env.observation_space.shape[0],
         env.action_space.shape[0],
         eta_0=0.01,
-        feature_dim=2,
+        feature_dim=16,
         lr=1e-5,
-        train_freq=64,
+        train_freq=8,
     )
     model = SAC("MlpPolicy", env, surgeon=surprise, verbose=1)
     model.learn(NUM_TIMESTEPS)

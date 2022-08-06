@@ -1,8 +1,8 @@
 import os
 
 import gym
-import panda_gym
 import numpy as np
+import panda_gym
 from toolbox.panda_utils import cumulative_object_coverage
 
 from sb3_contrib import SkewFit
@@ -12,7 +12,7 @@ NUM_RUN = 5
 
 for run_idx in range(NUM_RUN):
     env = gym.make("PandaNoTask-v0", nb_objects=1)
-    model = SkewFit(env, nb_models=200, power=-1.0, num_presampled_goals=64, verbose=1)
+    model = SkewFit(env, nb_models=50, power=-5.0, num_presampled_goals=128, verbose=1)
     model.learn(NUM_TIMESTEPS)
     buffer = model.replay_buffer
     observations = buffer.next_observations["observation"][: buffer.pos if not buffer.full else buffer.buffer_size]
