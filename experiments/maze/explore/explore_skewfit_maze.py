@@ -3,6 +3,7 @@ import os
 import gym
 import gym_continuous_maze
 import numpy as np
+from stable_baselines3.common.noise import OrnsteinUhlenbeckActionNoise
 from toolbox.maze_grid import compute_coverage
 
 from sb3_contrib import SkewFit
@@ -12,7 +13,14 @@ NUM_RUN = 5
 
 for run_idx in range(NUM_RUN):
     env = gym.make("ContinuousMaze-v0")
-    model = SkewFit(env, nb_models=200, power=-1.0, num_presampled_goals=64, verbose=1)
+    model = SkewFit(
+        env,
+        nb_models=200,
+        power=-1.0,
+        num_presampled_goals=64,
+        action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(2), np.ones(1)),
+        verbose=1,
+    )
     model.learn(NUM_TIMESTEPS)
     buffer = model.replay_buffer
     observations = buffer.next_observations["observation"][: buffer.pos if not buffer.full else buffer.buffer_size]

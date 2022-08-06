@@ -174,6 +174,8 @@ class GoExplore:
         )
         model_kwargs = {} if model_kwargs is None else model_kwargs
         model_kwargs["learning_starts"] = 10_000
+        model_kwargs["train_freq"] = 1
+        model_kwargs["gradient_steps"] = 1
         self.model = model_class(
             "MultiInputPolicy",
             env,

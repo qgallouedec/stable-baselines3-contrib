@@ -3,7 +3,8 @@ import os
 import gym
 import gym_continuous_maze
 import numpy as np
-from stable_baselines3 import SAC
+from stable_baselines3 import DDPG
+from stable_baselines3.common.noise import OrnsteinUhlenbeckActionNoise
 from toolbox.maze_grid import compute_coverage
 
 from sb3_contrib import Surprise
@@ -21,7 +22,9 @@ for run_idx in range(NUM_RUN):
         lr=1e-5,
         train_freq=64,
     )
-    model = SAC("MlpPolicy", env, surgeon=surprise, verbose=1)
+    model = DDPG(
+        "MlpPolicy", env, surgeon=surprise, action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(2), np.ones(1)), verbose=1
+    )
     model.learn(NUM_TIMESTEPS)
     buffer = model.replay_buffer
     observations = buffer.next_observations[: buffer.pos if not buffer.full else buffer.buffer_size]

@@ -2,7 +2,8 @@ import gym
 import gym_continuous_maze
 import numpy as np
 import optuna
-from stable_baselines3 import SAC
+from stable_baselines3 import DDPG
+from stable_baselines3.common.noise import OrnsteinUhlenbeckActionNoise
 from toolbox.maze_grid import compute_coverage
 
 from sb3_contrib import Surprise
@@ -29,7 +30,9 @@ def objective(trial: optuna.Trial) -> float:
             lr=lr,
         )
 
-        model = SAC("MlpPolicy", env, surgeon=surprise, verbose=1)
+        model = DDPG(
+            "MlpPolicy", env, surgeon=surprise, action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(2), np.ones(1)), verbose=1
+        )
         model.learn(NUM_TIMESTEPS)
         buffer = model.replay_buffer
         observations = buffer.next_observations[: buffer.pos if not buffer.full else buffer.buffer_size]
