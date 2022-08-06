@@ -24,7 +24,7 @@ for run_idx in range(NUM_RUN):
     coverage = compute_coverage(observations) / (24 * 24) * 100
     coverage = np.expand_dims(coverage, 0)
 
-    filename = "results/sac_maze.npy"
+    filename = "results/ddpg_maze.npy"
     if os.path.exists(filename):
         previous_coverage = np.load(filename)
         coverage = np.concatenate((previous_coverage, coverage))
