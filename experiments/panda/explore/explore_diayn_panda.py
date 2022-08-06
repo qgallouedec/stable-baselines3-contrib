@@ -3,6 +3,7 @@ import os
 import gym
 import numpy as np
 import panda_gym
+from stable_baselines3.common.noise import OrnsteinUhlenbeckActionNoise
 from toolbox.panda_utils import cumulative_object_coverage
 
 from sb3_contrib import DIAYN
@@ -12,7 +13,12 @@ NUM_RUN = 1
 
 for run_idx in range(NUM_RUN):
     env = gym.make("PandaNoTask-v0", nb_objects=1)
-    model = DIAYN(env, nb_skills=32, verbose=1)
+    model = DIAYN(
+        env,
+        nb_skills=32,
+        action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(env.action_space.shape[0]), np.ones(env.action_space.shape[0])),
+        verbose=1,
+    )
     model.learn(NUM_TIMESTEPS)
     buffer = model.replay_buffer
     observations = buffer.next_observations["observation"][: buffer.pos if not buffer.full else buffer.buffer_size]
