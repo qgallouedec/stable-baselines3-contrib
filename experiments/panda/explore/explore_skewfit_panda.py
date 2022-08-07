@@ -15,9 +15,9 @@ for run_idx in range(NUM_RUN):
     env = gym.make("PandaNoTask-v0", nb_objects=1)
     model = SkewFit(
         env,
-        nb_models=200,
-        power=-1.0,
-        num_presampled_goals=64,
+        nb_models=50,
+        power=-0.2,
+        num_presampled_goals=128,
         action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(env.action_space.shape[0]), np.ones(env.action_space.shape[0])),
         verbose=1,
     )

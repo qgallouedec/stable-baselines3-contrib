@@ -15,7 +15,7 @@ for run_idx in range(NUM_RUN):
     env = gym.make("PandaNoTask-v0", nb_objects=1)
     model = DIAYN(
         env,
-        nb_skills=32,
+        nb_skills=8,
         action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(env.action_space.shape[0]), np.ones(env.action_space.shape[0])),
         verbose=1,
     )

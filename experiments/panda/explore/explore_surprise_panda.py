@@ -17,10 +17,10 @@ for run_idx in range(NUM_RUN):
     surprise = Surprise(
         env.observation_space.shape[0],
         env.action_space.shape[0],
-        eta_0=0.01,
+        eta_0=0.1,
         feature_dim=16,
-        lr=1e-5,
-        train_freq=8,
+        lr=0.001,
+        train_freq=4,
     )
     model = DDPG(
         "MlpPolicy",

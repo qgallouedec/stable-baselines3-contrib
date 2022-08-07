@@ -16,8 +16,8 @@ for run_idx in range(NUM_RUN):
     env = gym.make("PandaNoTask-v0", nb_objects=1)
     icm = ICM(
         scaling_factor=0.01,
-        actor_loss_coef=0.001,
-        inverse_loss_coef=0.001,
+        actor_loss_coef=0.1,
+        inverse_loss_coef=10,
         forward_loss_coef=100,
         obs_dim=env.observation_space.shape[0],
         action_dim=env.action_space.shape[0],
