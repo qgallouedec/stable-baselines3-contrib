@@ -20,7 +20,7 @@ for run_idx in range(NUM_RUN):
         DDPG,
         env,
         cell_factory,
-        model_kwargs=dict(action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(2), np.ones(1))),
+        action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(env.action_space.shape[0]), np.ones(env.action_space.shape[0])),
         verbose=1,
     )
     model.explore(NUM_TIMESTEPS)
