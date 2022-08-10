@@ -3,7 +3,7 @@ import numpy as np
 import optuna
 import panda_gym
 from stable_baselines3.common.noise import OrnsteinUhlenbeckActionNoise
-from toolbox.panda_utils import cumulative_object_coverage
+from toolbox.panda_utils import compute_coverage
 
 from sb3_contrib import SkewFit
 
@@ -30,7 +30,7 @@ def objective(trial: optuna.Trial) -> float:
         model.learn(NUM_TIMESTEPS)
         buffer = model.replay_buffer
         observations = buffer.next_observations["observation"][: buffer.pos if not buffer.full else buffer.buffer_size]
-        coverage[run_idx] = cumulative_object_coverage(observations)
+        coverage[run_idx] = compute_coverage(observations)
 
     score = np.median(coverage[:, -1])
     return score

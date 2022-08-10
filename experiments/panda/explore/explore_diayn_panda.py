@@ -4,7 +4,7 @@ import gym
 import numpy as np
 import panda_gym
 from stable_baselines3.common.noise import OrnsteinUhlenbeckActionNoise
-from toolbox.panda_utils import cumulative_object_coverage
+from toolbox.panda_utils import compute_coverage
 
 from sb3_contrib import DIAYN
 
@@ -22,7 +22,7 @@ for run_idx in range(NUM_RUN):
     model.learn(NUM_TIMESTEPS)
     buffer = model.replay_buffer
     observations = buffer.next_observations["observation"][: buffer.pos if not buffer.full else buffer.buffer_size]
-    coverage = cumulative_object_coverage(observations)
+    coverage = compute_coverage(observations)
     coverage = np.expand_dims(coverage, 0)
 
     filename = "results/diayn_panda.npy"

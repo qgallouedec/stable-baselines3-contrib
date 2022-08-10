@@ -4,7 +4,7 @@ import gym
 import numpy as np
 import panda_gym
 from stable_baselines3 import SAC
-from toolbox.panda_utils import cumulative_object_coverage
+from toolbox.panda_utils import compute_coverage
 
 NUM_TIMESTEPS = 1_000_000
 NUM_RUN = 1
@@ -15,7 +15,7 @@ for run_idx in range(NUM_RUN):
     model.learn(NUM_TIMESTEPS)
     buffer = model.replay_buffer
     observations = buffer.next_observations[: buffer.pos if not buffer.full else buffer.buffer_size]
-    coverage = cumulative_object_coverage(observations)
+    coverage = compute_coverage(observations)
     coverage = np.expand_dims(coverage, 0)
 
     filename = "results/sac_panda.npy"
