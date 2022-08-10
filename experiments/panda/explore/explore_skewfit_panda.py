@@ -18,6 +18,7 @@ for run_idx in range(NUM_RUN):
         nb_models=50,
         power=-0.2,
         num_presampled_goals=128,
+        distance_threshold=0.2,
         action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(env.action_space.shape[0]), np.ones(env.action_space.shape[0])),
         verbose=1,
     )

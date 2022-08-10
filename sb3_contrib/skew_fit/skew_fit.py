@@ -17,6 +17,7 @@ class SkewFit(DDPG):
         nb_models: int = 100,
         power: float = -1.0,
         num_presampled_goals: int = 2048,
+        distance_threshold: float = 0.5,
         learning_rate: Union[float, Schedule] = 0.001,
         buffer_size: int = 1000000,
         learning_starts: int = 100,
@@ -46,6 +47,7 @@ class SkewFit(DDPG):
             batch_size=batch_size,
             power=power,
             num_presampled_goals=num_presampled_goals,
+            distance_threshold=distance_threshold,
         )
         super().__init__(
             "MultiInputPolicy",
