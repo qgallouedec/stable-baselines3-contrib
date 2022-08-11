@@ -4,13 +4,12 @@ import gym
 import numpy as np
 import panda_gym
 from stable_baselines3 import DDPG
-from stable_baselines3.common.noise import OrnsteinUhlenbeckActionNoise
 from toolbox.panda_utils import compute_coverage
 
 from sb3_contrib import GoExplore
 from sb3_contrib.go_explore.cells import Downscale
 
-NUM_TIMESTEPS = 2_00_000
+NUM_TIMESTEPS = 1_000_000
 NUM_RUN = 1
 
 for run_idx in range(NUM_RUN):
@@ -20,9 +19,6 @@ for run_idx in range(NUM_RUN):
         DDPG,
         env,
         cell_factory,
-        model_kwargs=dict(
-            #action_noise=OrnsteinUhlenbeckActionNoise(np.zeros(env.action_space.shape[0]), np.ones(env.action_space.shape[0]))
-        ),
         verbose=1,
     )
     model.explore(NUM_TIMESTEPS)
@@ -31,7 +27,7 @@ for run_idx in range(NUM_RUN):
     coverage = compute_coverage(observations)
     coverage = np.expand_dims(coverage, 0)
 
-    filename = "results/go_explore_pand200k.npy"
+    filename = "results/go_explore.npy"
     if os.path.exists(filename):
         previous_coverage = np.load(filename)
         coverage = np.concatenate((previous_coverage, coverage))
