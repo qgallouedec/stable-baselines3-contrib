@@ -8,10 +8,32 @@ from stable_baselines3.common.base_class import maybe_make_env
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
+from stable_baselines3.common.preprocessing import is_image_space
 
 from sb3_contrib.go_explore.archive import ArchiveBuffer
-from sb3_contrib.go_explore.cells import CellFactory
+from sb3_contrib.go_explore.cells import AtariDownscale, CellFactory
 from sb3_contrib.go_explore.feature_extractor import GoExploreExtractor
+
+
+def maybe_transpose(observations: np.ndarray, observation_space: spaces.Space) -> np.ndarray:
+    """
+    Transpoose image so that the observation fits the observation space.
+
+    Args:
+        observations (np.ndarray): Batched observations
+        observation_space (spaces.Space): Space
+
+    Returns:
+        np.ndarray: Batched observation that fit the observation space shape
+    """
+    if is_image_space(observation_space):
+        if observation_space.shape[0] in [1, 3]:  # channel first
+            if observation_space.shape[0] == observations.shape[3]:
+                return np.transpose(observations, (0, 3, 1, 2))
+        elif observation_space.shape[2] in [1, 3]:  # channel last
+            if observation_space.shape[2] == observations.shape[1]:
+                return np.transpose(observations, (0, 2, 3, 1))
+    return observations
 
 
 class Goalify(gym.Wrapper):
@@ -35,6 +57,13 @@ class Goalify(gym.Wrapper):
                 "goal": copy.deepcopy(self.env.observation_space),
             }
         )
+        if isinstance(cell_factory, AtariDownscale):
+            self.observation_space = spaces.Dict(
+                {
+                    "observation": copy.deepcopy(self.env.observation_space),
+                    "goal": spaces.Box(0, 255, (400,), dtype=np.float32),
+                }
+            )
         self.archive = None  # type: ArchiveBuffer
         self.cell_factory = cell_factory
         self.nb_random_exploration_steps = nb_random_exploration_steps
@@ -53,7 +82,8 @@ class Goalify(gym.Wrapper):
     def reset(self) -> Dict[str, np.ndarray]:
         obs = self.env.reset()
         assert self.archive is not None, "You need to set the archive before reset. Use set_archive()"
-        self.goal_cell_trajectory = self.archive.sample_trajectory()
+        self.goal_cell_trajectory = np.array(self.archive.sample_trajectory())
+        self.goal_cell_trajectory = maybe_transpose(self.goal_cell_trajectory, self.observation_space["goal"])
         self._goal_idx = 0
         self.done_countdown = self.nb_random_exploration_steps
         self._is_last_goal_reached = False  # useful flag
