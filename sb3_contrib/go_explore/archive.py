@@ -8,6 +8,7 @@ from stable_baselines3.common.type_aliases import DictReplayBufferSamples
 from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
 from stable_baselines3.her.goal_selection_strategy import GoalSelectionStrategy
+
 from sb3_contrib.go_explore.cells import CellFactory
 
 
