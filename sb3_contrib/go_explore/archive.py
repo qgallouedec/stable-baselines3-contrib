@@ -9,8 +9,6 @@ from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
 from stable_baselines3.her.goal_selection_strategy import GoalSelectionStrategy
 
-from sb3_contrib.go_explore.cells import CellFactory
-
 
 def multinomial(weights: np.ndarray) -> int:
     p = weights / weights.sum()
@@ -27,7 +25,6 @@ class ArchiveBuffer(HerReplayBuffer):
     :param observation_space: Observation space
     :param action_space: Action space
     :param env: The training environment
-    :param cell_factory: The cell factory
     :param device: PyTorch device
     :param n_envs: Number of parallel environments
     :param n_sampled_goal: Number of virtual transitions to create per real transition,
@@ -39,16 +36,14 @@ class ArchiveBuffer(HerReplayBuffer):
     def __init__(
         self,
         buffer_size: int,
-        observation_space: spaces.Space,
+        observation_space: spaces.Dict,
         action_space: spaces.Space,
         env: VecEnv,
-        cell_factory: CellFactory,
-        cell_dim: int,
         device: Union[torch.device, str] = "cpu",
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
         handle_timeout_termination: bool = True,
-        n_sampled_goal: int = np.inf,
+        n_sampled_goal: int = 4,
         goal_selection_strategy: Union[GoalSelectionStrategy, str] = "future",
     ) -> None:
         super().__init__(
@@ -63,27 +58,11 @@ class ArchiveBuffer(HerReplayBuffer):
         )
 
         # For cell management
-        self.cell_factory = cell_factory
-        self.weights = None
+        self.weights = np.zeros(0, dtype=np.int64)
 
-        self.cells = np.zeros((self.buffer_size, self.n_envs, cell_dim), dtype=np.float32)
-
-    def add(
-        self,
-        obs: Dict[str, np.ndarray],
-        next_obs: Dict[str, np.ndarray],
-        action: np.ndarray,
-        reward: np.ndarray,
-        done: np.ndarray,
-        infos: List[Dict[str, Any]],
-        is_virtual: bool = False,
-    ) -> None:
-        self.cells[self.pos] = self.cell_factory(next_obs["observation"])
-        super().add(obs, next_obs, action, reward, done, infos, is_virtual)
-
-    def recompute_cells(self) -> None:
+    def recompute_weights(self) -> None:
         """
-        Recompute cells.
+        Recompute weights.
         """
         upper_bound = self.pos if not self.full else self.buffer_size
         nb_obs = upper_bound * self.n_envs
@@ -92,7 +71,7 @@ class ArchiveBuffer(HerReplayBuffer):
             return  # no trajectory yet
 
         # shape from (pos, env_idx, *cell_shape) to (idx, *cell_shape)
-        flat_cells = self.cells[:upper_bound].reshape((nb_obs, -1))
+        flat_cells = self.next_observations["cell"][:upper_bound].reshape((nb_obs, -1))
         # Compute the unique cells.
         # cells_uid is a tensor of shape (nb_obs,) mapping observation index to its cell index.
         # unique_cells is a tensor of shape (nb_cells, *cell_shape) mapping cell index to the cell.
@@ -121,9 +100,9 @@ class ArchiveBuffer(HerReplayBuffer):
 
         :return: A list of observations as array
         """
-        if self.weights is None:  # no cells yet
-            goal = self.observation_space["goal"].sample()
-            return [goal]
+        if len(self.weights) == 0:  # no cell yet
+            goal = np.expand_dims(self.observation_space["goal"].sample(), 0)
+            return goal
 
         cell_uid = multinomial(self.weights)
         # Get the env_idx, the pos in the buffer and the position of the start of the trajectory
@@ -131,13 +110,54 @@ class ArchiveBuffer(HerReplayBuffer):
         goal_pos = self.earliest_cell_pos[cell_uid]
         start = self.ep_start[goal_pos, env_idx]
         # Loop to avoid consecutive repetition
-        trajectory = [self.cells[start, env_idx]]
+        trajectory = [self.next_observations["cell"][start, env_idx]]
         for pos in range(start + 1, goal_pos + 1):
-            previous_cell = self.cells[pos - 1, env_idx]
-            cell = self.cells[pos, env_idx]
+            previous_cell = self.next_observations["cell"][pos - 1, env_idx]
+            cell = self.next_observations["cell"][pos, env_idx]
             if (previous_cell != cell).any():
                 trajectory.append(cell)
         return np.array(trajectory)
+
+    def _get_real_samples(
+        self, batch_inds: np.ndarray, env_indices: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> DictReplayBufferSamples:
+        """
+        Get the samples corresponding to the batch and environment indices.
+
+        :param batch_inds: Indices of the transitions
+        :param env_indices: Indices of the envrionments
+        :param env: associated gym VecEnv to normalize the
+            observations/rewards when sampling, defaults to None
+        :return: Samples
+        """
+        # Normalize if needed and remove extra dimension (we are using only one env for now)
+        obs_ = self._normalize_obs({key: obs[batch_inds, env_indices] for key, obs in self.observations.items()}, env)
+        next_obs_ = self._normalize_obs(
+            {key: obs[batch_inds, env_indices] for key, obs in self.next_observations.items()}, env
+        )
+        cells = self.next_observations["cell"][batch_inds, env_indices]
+        goals = self.observations["goal"][batch_inds, env_indices]
+
+        # Compute new reward
+        is_success = (cells == goals).all(-1)
+        rewards = is_success.astype(np.float32) - 1
+        for idx, info in enumerate(self.infos[batch_inds, env_indices]):
+            if info.get("dead", False):
+                rewards[idx] -= 100
+
+        # Convert to torch tensor
+        observations = {key: self.to_torch(obs) for key, obs in obs_.items()}
+        next_observations = {key: self.to_torch(obs) for key, obs in next_obs_.items()}
+
+        return DictReplayBufferSamples(
+            observations=observations,
+            actions=self.to_torch(self.actions[batch_inds, env_indices]),
+            next_observations=next_observations,
+            # Only use dones that are not due to timeouts
+            # deactivated by default (timeouts is initialized as an array of False)
+            dones=self.to_torch(self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])),
+            rewards=self.to_torch(self._normalize_reward(rewards, env)),
+        )
 
     def _get_virtual_samples(
         self, batch_inds: np.ndarray, env_indices: np.ndarray, env: Optional[VecNormalize] = None
@@ -151,9 +171,9 @@ class ArchiveBuffer(HerReplayBuffer):
         :return: Samples
         """
         # Get infos and obs
-        obs = {key: obs[batch_inds, env_indices, :] for key, obs in self.observations.items()}
-        next_obs = {key: obs[batch_inds, env_indices, :] for key, obs in self.next_observations.items()}
-        cell = self.cell_factory(obs["observation"])
+        obs = {key: obs[batch_inds, env_indices] for key, obs in self.observations.items()}
+        next_obs = {key: obs[batch_inds, env_indices] for key, obs in self.next_observations.items()}
+        cells = self.next_observations["cell"][batch_inds, env_indices]
 
         # Sample and set new goals
         new_goals = self._sample_goals(batch_inds, env_indices)
@@ -162,11 +182,14 @@ class ArchiveBuffer(HerReplayBuffer):
         next_obs["goal"] = new_goals
 
         # Compute new reward
-        is_success = (cell == new_goals).all(-1)
+        is_success = (cells == new_goals).all(-1)
         rewards = is_success.astype(np.float32) - 1
+        for idx, info in enumerate(self.infos[batch_inds, env_indices]):
+            if info.get("dead", False):
+                rewards[idx] -= 100
 
-        obs = self._normalize_obs(obs)
-        next_obs = self._normalize_obs(next_obs)
+        obs = self._normalize_obs(obs, env)
+        next_obs = self._normalize_obs(next_obs, env)
 
         # Convert to torch tensor
         observations = {key: self.to_torch(obs) for key, obs in obs.items()}
@@ -209,4 +232,4 @@ class ArchiveBuffer(HerReplayBuffer):
             raise ValueError(f"Strategy {self.goal_selection_strategy} for sampling goals not supported!")
 
         transition_indices = (transition_indices_in_episode + batch_ep_start) % self.buffer_size
-        return self.cells[transition_indices, env_indices]
+        return self.next_observations["cell"][transition_indices, env_indices]
