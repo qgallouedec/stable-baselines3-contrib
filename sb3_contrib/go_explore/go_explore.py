@@ -33,7 +33,7 @@ class VecGoalify(VecEnvWrapper):
 
     def __init__(self, venv: VecEnv, nb_random_exploration_steps: int = 30, window_size: int = 10) -> None:
         super().__init__(venv)
-        cell_space = venv.get_attr("cell_space")[0]
+        cell_space = spaces.MultiDiscrete([8 for _ in range(8 * 11)])
         self.observation_space = spaces.Dict(
             {
                 "observation": copy.deepcopy(venv.observation_space),
@@ -73,9 +73,6 @@ class VecGoalify(VecEnvWrapper):
         """
         self.archive_buffer = archive_buffer
 
-    def _get_dict_obs(self, observations: np.ndarray) -> Dict[str, np.ndarray]:
-        return
-
     def step_async(self, actions: np.ndarray) -> None:
         self.actions = actions
         return super().step_async(actions)
@@ -93,7 +90,7 @@ class VecGoalify(VecEnvWrapper):
         for info, reward in zip(infos, rewards):
             info["env_reward"] = reward
 
-        cells = np.array([info["cell"] for info in infos])
+        cells = np.array([info["cell"].flatten() for info in infos])
         # Move to next goal here (by modifying self._goal_idx and self._is_last_goal_reached)
         for env_idx in range(self.num_envs):
             infos[env_idx]["is_success"] = self._is_last_goal_reached[env_idx]  # Will be overwritten if necessary
@@ -101,8 +98,7 @@ class VecGoalify(VecEnvWrapper):
                 upper_idx = min(self._goal_idxs[env_idx] + self.window_size, len(self.goal_trajectories[env_idx]))
                 future_goals = self.goal_trajectories[env_idx][self._goal_idxs[env_idx] : upper_idx]
                 flat_future_goals = future_goals.reshape(future_goals.shape[0], -1)
-                flat_cell = cells[env_idx].flatten()
-                future_success = (flat_cell == flat_future_goals).all(-1)
+                future_success = (cells[env_idx] == flat_future_goals).all(-1)
                 if future_success.any():
                     furthest_futur_success = np.where(future_success)[0].max()
                     self._goal_idxs[env_idx] += furthest_futur_success + 1
@@ -209,13 +205,13 @@ class GoExplore:
         venv = VecGoalify(venv, nb_random_exploration_steps=nb_random_exploration_steps)
         venv = VecMonitor(venv)
 
-        cell_dim = np.sum(venv.get_attr("cell_space")[0].nvec)  # size of multidiscrete
+        cell_dim = 8 * 11 * 8  # size of multidiscrete
 
         model_kwargs = {} if model_kwargs is None else model_kwargs
         model_kwargs["learning_starts"] = learning_starts
         model_kwargs["train_freq"] = 10
         model_kwargs["gradient_steps"] = n_envs
-        model_kwargs["policy_kwargs"]["features_extractor_class"] = GoExploreExtractor
+        model_kwargs["policy_kwargs"] = {"features_extractor_class": GoExploreExtractor}
         model_kwargs["policy_kwargs"]["features_extractor_kwargs"] = dict(cell_dim=cell_dim)
         self.model = model_class(
             "MultiInputPolicy",
@@ -241,4 +237,4 @@ class GoExplore:
             callback = [cell_factory_updater, callback]
         else:
             callback = [cell_factory_updater]
-        self.model.learn(total_timesteps, callback=callback)
+        self.model.learn(total_timesteps, callback=callback, log_interval=1000)

@@ -141,9 +141,10 @@ class ArchiveBuffer(HerReplayBuffer):
         # Compute new reward
         is_success = (cells == goals).all(-1)
         rewards = is_success.astype(np.float32) - 1
-        for idx, info in enumerate(self.infos[batch_inds, env_indices]):
-            if info.get("dead", False):
-                rewards[idx] -= 100
+        deads = np.array(
+            [self.infos[batch_idx, env_idx].get("dead", False) for batch_idx, env_idx in zip(batch_inds, env_indices)],
+            dtype=np.float32,
+        )
 
         # Convert to torch tensor
         observations = {key: self.to_torch(obs) for key, obs in obs_.items()}
@@ -155,7 +156,9 @@ class ArchiveBuffer(HerReplayBuffer):
             next_observations=next_observations,
             # Only use dones that are not due to timeouts
             # deactivated by default (timeouts is initialized as an array of False)
-            dones=self.to_torch(self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])),
+            dones=self.to_torch(
+                self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices]) * (1 - deads)
+            ),
             rewards=self.to_torch(self._normalize_reward(rewards, env)),
         )
 
@@ -184,9 +187,10 @@ class ArchiveBuffer(HerReplayBuffer):
         # Compute new reward
         is_success = (cells == new_goals).all(-1)
         rewards = is_success.astype(np.float32) - 1
-        for idx, info in enumerate(self.infos[batch_inds, env_indices]):
-            if info.get("dead", False):
-                rewards[idx] -= 100
+        deads = np.array(
+            [self.infos[batch_idx, env_idx].get("dead", False) for batch_idx, env_idx in zip(batch_inds, env_indices)],
+            dtype=np.float32,
+        )
 
         obs = self._normalize_obs(obs, env)
         next_obs = self._normalize_obs(next_obs, env)
@@ -201,7 +205,9 @@ class ArchiveBuffer(HerReplayBuffer):
             next_observations=next_observations,
             # Only use dones that are not due to timeouts
             # deactivated by default (timeouts is initialized as an array of False)
-            dones=self.to_torch(self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])),
+            dones=self.to_torch(
+                self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices]) * (1 - deads)
+            ),
             rewards=self.to_torch(self._normalize_reward(rewards, env)),
         )
 
